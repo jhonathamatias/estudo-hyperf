@@ -17,5 +17,8 @@ Router::get('/favicon.ico', function () {
     return '';
 });
 
-Router::get('/{id}', Co);
+Router::get('/test', \App\Controller\StatePolluted::class . '@testStatePolluted');
+Router::get('/test-unpolluted', \App\Controller\StatePolluted::class . '@testStateUnpolluted');
+Router::get('/test-unpolluted-email', \App\Controller\StatePolluted::class . '@testStateUnpollutedEmail');
+
 

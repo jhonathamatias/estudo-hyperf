@@ -48,8 +48,6 @@ RUN set -ex \
 
 RUN chmod +x /usr/local/bin/composer
 
-USER application
-
 WORKDIR /opt/www
 
 # Composer Cache
@@ -57,8 +55,8 @@ WORKDIR /opt/www
 # RUN composer install --no-dev --no-scripts
 
 COPY . /opt/www
-RUN composer install --no-scripts
+RUN composer install --no-scripts && chown -R application:application /opt/www
 
 EXPOSE 9501
 
-ENTRYPOINT ["php", "/opt/www/bin/hyperf.php", "start"]
+CMD ["php", "/opt/www/bin/hyperf.php", "server:watch"]

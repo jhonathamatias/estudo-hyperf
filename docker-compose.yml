@@ -9,7 +9,6 @@ services:
         GID: 1000
     volumes:
       - ./:/opt/www
-      - /opt/www/vendor
     ports:
       - 9501:9501
     environment:
