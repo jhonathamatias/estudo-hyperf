@@ -1,64 +1,219 @@
-# Introduction
+# Estudo Swoole/Hyperf - Poluição de Estado em Corrotinas
 
-This is a skeleton application using the Hyperf framework. This application is meant to be used as a starting place for those looking to get their feet wet with Hyperf Framework.
+Este é um projeto de estudo focado em demonstrar o problema de **poluição de estado (state pollution)** em aplicações que utilizam corrotinas do Swoole/Hyperf, e como resolver esse problema.
 
-# Requirements
+## 📚 Sobre o Projeto
 
-Hyperf has some requirements for the system environment, it can only run under Linux and Mac environment, but due to the development of Docker virtualization technology, Docker for Windows can also be used as the running environment under Windows.
+Em aplicações que utilizam corrotinas (como Swoole/Hyperf), os serviços são singletons por padrão. Isso significa que a mesma instância do serviço é compartilhada entre todas as corrotinas que processam requisições simultâneas.
 
-The various versions of Dockerfile have been prepared for you in the [hyperf/hyperf-docker](https://github.com/hyperf/hyperf-docker) project, or directly based on the already built [hyperf/hyperf](https://hub.docker.com/r/hyperf/hyperf) Image to run.
+Quando você armazena estado em propriedades da classe, esse estado pode ser sobrescrito por outra corrotina antes que a primeira termine seu processamento, resultando em dados incorretos sendo retornados.
 
-When you don't want to use Docker as the basis for your running environment, you need to make sure that your operating environment meets the following requirements:  
+### 🎯 Objetivos do Projeto
 
- - PHP >= 8.1
- - Any of the following network engines
-   - Swoole PHP extension >= 5.0，with `swoole.use_shortname` set to `Off` in your `php.ini`
-   - Swow PHP extension >= 1.3
- - JSON PHP extension
- - Pcntl PHP extension
- - OpenSSL PHP extension （If you need to use the HTTPS）
- - PDO PHP extension （If you need to use the MySQL Client）
- - Redis PHP extension （If you need to use the Redis Client）
- - Protobuf PHP extension （If you need to use the gRPC Server or Client）
+- Demonstrar o problema de poluição de estado em corrotinas
+- Mostrar exemplos práticos de código problemático
+- Apresentar soluções corretas usando Context do Hyperf
+- Fornecer exemplos de teste para validar o comportamento
 
-# Installation using Composer
+## 🏗️ Estrutura do Projeto
 
-The easiest way to create a new Hyperf project is to use [Composer](https://getcomposer.org/). If you don't have it already installed, then please install as per [the documentation](https://getcomposer.org/download/).
-
-To create your new Hyperf project:
-
-```bash
-composer create-project hyperf/hyperf-skeleton path/to/install
+```
+estudo-swoole-hyperf/
+├── app/
+│   ├── Controller/
+│   │   ├── CoroutineDemoController.php    # Endpoints de demonstração
+│   │   └── IndexController.php
+│   ├── Services/
+│   │   ├── UserServiceStateful.php        # ⚠️ Demonstra o PROBLEMA
+│   │   ├── UserServiceStateless.php       # ✅ Demonstra a SOLUÇÃO
+│   │   └── CompanyService.php             # Exemplo adicional
+│   ├── Model/
+│   │   └── User.php                       # Modelo de exemplo
+│   ├── Exception/
+│   └── Constants/
+├── scripts/
+│   └── load-test.lua                      # Script para testes de carga
+├── config/
+└── README.md
 ```
 
-If your development environment is based on Docker you can use the official Composer image to create a new Hyperf project:
+## 🚀 Como Usar
+
+### Pré-requisitos
+
+- PHP >= 8.1
+- Swoole PHP extension >= 5.0
+- Composer
+
+### Instalação
 
 ```bash
-docker run --rm -it -v $(pwd):/app composer create-project --ignore-platform-reqs hyperf/hyperf-skeleton path/to/install
+composer install
 ```
 
-# Getting started
-
-Once installed, you can run the server immediately using the command below.
+### Executar o Servidor
 
 ```bash
-cd path/to/install
 php bin/hyperf.php start
 ```
 
-Or if in a Docker based environment you can use the `docker-compose.yml` provided by the template:
+O servidor estará disponível em `http://localhost:9501`
 
+## 📖 Endpoints de Demonstração
+
+### 1. Estado Poluído (Problema)
+
+**GET** `/demo/state-polluted?name=Alice`
+
+Demonstra o problema de poluição de estado. Quando múltiplas requisições são processadas simultaneamente, o valor retornado pode não corresponder ao valor solicitado.
+
+**Exemplo:**
 ```bash
-cd path/to/install
-docker-compose up
+curl "http://localhost:9501/demo/state-polluted?name=Alice"
 ```
 
-This will start the cli-server on port `9501`, and bind it to all network interfaces. You can then visit the site at `http://localhost:9501/` which will bring up Hyperf default home page.
+**Resposta:**
+```json
+{
+  "requested": "Alice",
+  "returned": "Bob",  // ⚠️ Valor incorreto devido à poluição
+  "is_polluted": true,
+  "message": "⚠️ Estado foi poluído! O valor retornado não corresponde ao solicitado."
+}
+```
 
-## Hints
+### 2. Estado Não Poluído - Usando Context (Solução)
 
-- A nice tip is to rename `hyperf-skeleton` of files like `composer.json` and `docker-compose.yml` to your actual project name.
-- Take a look at `config/routes.php` and `app/Controller/IndexController.php` to see an example of a HTTP entrypoint.
+**GET** `/demo/state-unpolluted?name=Alice`
 
-**Remember:** you can always replace the contents of this README.md file to something that fits your project description.
-# estudo-hyperf
+Demonstra a solução usando `Context` do Hyperf, que mantém dados isolados por corrotina.
+
+**Exemplo:**
+```bash
+curl "http://localhost:9501/demo/state-unpolluted?name=Alice"
+```
+
+**Resposta:**
+```json
+{
+  "requested": "Alice",
+  "returned": "Alice",  // ✅ Valor correto
+  "is_polluted": false,
+  "message": "✅ Estado não foi poluído - Context funcionou corretamente!"
+}
+```
+
+### 3. Estado Não Poluído - Usando Nova Instância (Solução)
+
+**GET** `/demo/state-unpolluted-email?email=alice@example.com`
+
+Demonstra que criar novas instâncias de objetos dentro da corrotina também evita poluição de estado.
+
+**Exemplo:**
+```bash
+curl "http://localhost:9501/demo/state-unpolluted-email?email=alice@example.com"
+```
+
+## 🧪 Testando o Problema
+
+Para realmente ver o problema de poluição de estado, você precisa fazer múltiplas requisições simultâneas.
+
+### Usando wrk (Recomendado)
+
+```bash
+# Instalar wrk (se necessário)
+# Ubuntu/Debian: sudo apt-get install wrk
+# macOS: brew install wrk
+
+# Testar endpoint com problema
+wrk -t12 -c400 -d30s "http://localhost:9501/demo/state-polluted?name=User1"
+
+# Testar endpoint com solução
+wrk -t12 -c400 -d30s -s scripts/load-test.lua http://localhost:9501
+```
+
+### Usando Script Lua Personalizado
+
+O arquivo `scripts/load-test.lua` contém um script para testar com diferentes emails:
+
+```bash
+wrk -t12 -c400 -d30s -s scripts/load-test.lua http://localhost:9501
+```
+
+### Usando curl em Paralelo
+
+```bash
+# Fazer 10 requisições simultâneas
+for i in {1..10}; do
+  curl "http://localhost:9501/demo/state-polluted?name=User$i" &
+done
+wait
+```
+
+Depois, verifique os logs em `runtime/debug-polluted.log` para ver os resultados.
+
+## 🔍 Entendendo o Problema
+
+### O Problema: State Pollution
+
+**Cenário do problema:**
+
+1. Corrotina A recebe requisição com nome "Alice"
+2. Corrotina A define `$this->currentUser = "Alice"`
+3. Corrotina A entra em `sleep(1)` (simulando I/O)
+4. Corrotina B recebe requisição com nome "Bob"
+5. Corrotina B define `$this->currentUser = "Bob"` (SOBRESCREVE!)
+6. Corrotina A acorda e retorna `$this->currentUser`, mas agora é "Bob"!
+
+**Resultado:** Corrotina A retorna "Bob" quando deveria retornar "Alice"
+
+### A Solução: Context do Hyperf
+
+O `Context` do Hyperf é uma estrutura de dados única para cada corrotina. Ele permite armazenar e recuperar dados específicos da corrotina sem risco de interferência entre elas.
+
+**Como funciona:**
+
+```php
+// Armazena no Context da corrotina atual
+Context::set('user_name', $name);
+
+// Recupera do Context da corrotina atual (sempre correto)
+$name = Context::get('user_name');
+```
+
+### Outra Solução: Nova Instância
+
+Criar uma nova instância de objeto dentro da corrotina também funciona, pois cada instância é independente:
+
+```php
+// Cada corrotina cria sua própria instância
+$user = new User();
+$user->email = $email;
+```
+
+## 📝 Logs
+
+Os endpoints geram logs em:
+
+- `runtime/debug-polluted.log` - Logs do endpoint com problema
+- `runtime/debug-unpolluted.log` - Logs dos endpoints com solução
+
+Você também pode ver os logs no console quando o servidor está rodando.
+
+## 🎓 Conceitos Aprendidos
+
+- ✅ Entendimento de corrotinas no Swoole/Hyperf
+- ✅ Problema de poluição de estado em singletons
+- ✅ Uso do Context do Hyperf para isolamento de dados
+- ✅ Boas práticas para serviços stateless
+- ✅ Testes de carga para validar comportamento
+
+## 📚 Recursos Adicionais
+
+- [Documentação do Hyperf](https://hyperf.wiki/)
+- [Documentação do Swoole](https://www.swoole.co.uk/docs)
+- [Hyperf Context](https://hyperf.wiki/3.1/#/en/context)
+
+## 📄 Licença
+
+Este projeto é apenas para fins educacionais.

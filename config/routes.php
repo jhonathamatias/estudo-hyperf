@@ -17,8 +17,9 @@ Router::get('/favicon.ico', function () {
     return '';
 });
 
-Router::get('/test', \App\Controller\StatePolluted::class . '@testStatePolluted');
-Router::get('/test-unpolluted', \App\Controller\StatePolluted::class . '@testStateUnpolluted');
-Router::get('/test-unpolluted-email', \App\Controller\StatePolluted::class . '@testStateUnpollutedEmail');
+// Rotas de demonstração sobre poluição de estado em corrotinas
+Router::get('/demo/state-polluted', \App\Controller\CoroutineDemoController::class . '@testStatePolluted');
+Router::get('/demo/state-unpolluted', \App\Controller\CoroutineDemoController::class . '@testStateUnpolluted');
+Router::get('/demo/state-unpolluted-email', \App\Controller\CoroutineDemoController::class . '@testStateUnpollutedEmail');
 
 
