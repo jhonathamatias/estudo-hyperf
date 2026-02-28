@@ -58,7 +58,7 @@ wrk -t12 -c400 -d30s "http://localhost:9501/demo/state-unpolluted?name=TestUser"
 #### Teste com Script Lua (Múltiplos Valores)
 
 ```bash
-wrk -t12 -c400 -d30s -s scripts/load-test.lua http://localhost:9501
+wrk -t12 -c400 -d30s -s scripts/state-unpolluted.lua http://localhost:9501
 ```
 
 ## 📊 Analisando os Resultados

@@ -129,7 +129,7 @@ Para realmente ver o problema de poluição de estado, você precisa fazer múlt
 wrk -t12 -c400 -d30s "http://localhost:9501/demo/state-polluted?name=User1"
 
 # Testar endpoint com solução
-wrk -t12 -c400 -d30s -s scripts/load-test.lua http://localhost:9501
+wrk -t12 -c400 -d30s -s scripts/state-unpolluted.lua http://localhost:9501
 ```
 
 ### Usando Script Lua Personalizado
@@ -137,7 +137,7 @@ wrk -t12 -c400 -d30s -s scripts/load-test.lua http://localhost:9501
 O arquivo `scripts/load-test.lua` contém um script para testar com diferentes emails:
 
 ```bash
-wrk -t12 -c400 -d30s -s scripts/load-test.lua http://localhost:9501
+wrk -t12 -c400 -d30s -s scripts/state-unpolluted.lua http://localhost:9501
 ```
 
 ### Usando curl em Paralelo
